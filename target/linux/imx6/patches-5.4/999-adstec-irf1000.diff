@@ -1,0 +1,504 @@
+diff -Naur dst.orf/irf1.dts dts/irf1.dts
+--- a/arch/arm/boot/dts/irf1.dts	1970-01-01 01:00:00.000000000 +0100
++++ a/arch/arm/boot/dts/irf1.dts	2022-03-12 18:13:58.969287696 +0100
+@@ -0,0 +1,488 @@
++/*
++ * Copyright (C) 2015 Freescale Semiconductor, Inc.
++ * Copyright (C) 2017 ads-tec GmbH
++ *
++ * This program is free software; you can redistribute it and/or modify
++ * it under the terms of the GNU General Public License version 2 as
++ * published by the Free Software Foundation.
++ */
++
++/dts-v1/;
++
++#include <dt-bindings/input/input.h>
++#include "imx6ul.dtsi"
++
++/ {
++	model = "ads-tec IRF1";
++
++	/* TODO: do we need the attribute "fsl,imx6ul-14x14-evk" ? */
++	compatible = "adstec,irf1", "fsl,imx6ul-14x14-evk", "fsl,imx6ul";
++
++	/* TODO: change this for productive use ? */
++	chosen {
++		stdout-path = &uart1;
++	};
++
++	memory {
++		reg = <0x80000000 0x10000000>; //10000000=256M
++	};
++
++	//See /doc/Documentation/devicetree/bindings/reserved-memory/reserved-memory.txt
++	reserved-memory {
++		#address-cells = <1>;
++		#size-cells = <1>;
++		ranges;
++
++		linux,cma {
++			compatible = "shared-dma-pool"; //
++			reusable;
++                       size = <0xa000000>; /* NXP default for imx6ul with kernel 5.4 */
++			linux,cma-default;
++		};
++	};
++
++	regulators {
++		compatible = "simple-bus";
++		#address-cells = <1>;
++		#size-cells = <0>;
++
++		reg_can_3v3: regulator@0 {
++			compatible = "regulator-fixed";
++			reg = <0>;
++			regulator-name = "can-3v3";
++			regulator-min-microvolt = <3300000>;
++			regulator-max-microvolt = <3300000>;
++			//gpios = <&gpio_spi 3 GPIO_ACTIVE_LOW>;
++		};
++
++		reg_sd1_vmmc: regulator@1 { //for SD card
++			compatible = "regulator-fixed";
++			regulator-name = "VSD_3V3";
++			regulator-min-microvolt = <3300000>;
++			regulator-max-microvolt = <3300000>;
++			// Disabled until we patched our first boards such that card-detect is ok
++			//gpio = <&gpio1 9 GPIO_ACTIVE_HIGH>;
++			//enable-active-high;
++		};
++
++		reg_vldo_3v3: regulator@2 { //for adc
++			compatible = "regulator-fixed";
++			regulator-name = "vldo_3V3";
++			regulator-min-microvolt = <3300000>;
++			regulator-max-microvolt = <3300000>;
++		};
++
++		reg_gpio_dvfs: regulator-gpio { //for cpu
++			compatible = "regulator-gpio";
++			pinctrl-names = "default";
++			pinctrl-0 = <&pinctrl_dvfs>;
++			regulator-min-microvolt = <1300000>;
++			regulator-max-microvolt = <1400000>;
++			regulator-name = "gpio_dvfs";
++			regulator-type = "voltage";
++			gpios = <&gpio5 3 GPIO_ACTIVE_HIGH>;
++			states = <1300000 0x1 1400000 0x0>; //1.3V if GPIO5_3=1; 1.4V if GPIO5_3=0
++		};
++	};
++
++	leds {
++		compatible = "gpio-leds";
++		pinctrl-names = "default";
++		pinctrl-0 = <&pinctrl_leds>;
++
++		vpn_red {
++			gpios = <&gpio3 5 GPIO_ACTIVE_HIGH>;
++			linux,default-trigger = "none";
++		};
++		vpn_led {
++			gpios = <&gpio3 6 GPIO_ACTIVE_HIGH>;
++			linux,default-trigger = "none";
++		};
++		umts_orange {
++			gpios = <&gpio3 10 GPIO_ACTIVE_HIGH>;
++			linux,default-trigger = "none";
++		};
++		umts_green {
++			gpios = <&gpio3 11 GPIO_ACTIVE_HIGH>;
++			linux,default-trigger = "none";
++		};
++		lp_test_red {
++			gpios = <&gpio3 18 GPIO_ACTIVE_HIGH>;
++			linux,default-trigger = "none";
++		};
++		lp_test_green {
++			gpios = <&gpio3 19 GPIO_ACTIVE_HIGH>;
++			linux,default-trigger = "none";
++		};
++		power_red {
++			gpios = <&gpio3 22 GPIO_ACTIVE_HIGH>;
++			linux,default-trigger = "none";
++		};
++		power_green {
++			gpios = <&gpio3 23 GPIO_ACTIVE_HIGH>;
++			linux,default-trigger = "none";
++		};
++
++		status_red {
++			gpios = <&gpio3 26 GPIO_ACTIVE_HIGH>;
++			linux,default-trigger = "none";
++		};
++		status_green {
++			gpios = <&gpio3 27 GPIO_ACTIVE_HIGH>;
++			linux,default-trigger = "none";
++		};
++	};
++
++};
++
++&cpu0 {
++	arm-supply = <&reg_arm>;
++	soc-supply = <&reg_soc>;
++	dc-supply = <&reg_gpio_dvfs>;
++};
++
++&fec1 {
++	pinctrl-names = "default";
++	pinctrl-0 = <&pinctrl_enet1>;
++	phy-mode = "rmii";
++	status = "okay";
++
++	fixed-link {
++		speed = <100>;
++		full-duplex;
++	};
++
++	mdio {
++		#address-cells = <1>;
++		#size-cells = <0>;
++		/* !!! phy addresses will be changed from uboot for dm8806 switch !!! */
++		lan1phy: ethernet-phy@1 {
++			compatible = "ethernet-phy-ieee802.3-c22";
++			reg = <1>;
++		};
++		lan2phy: ethernet-phy@2 {
++			compatible = "ethernet-phy-ieee802.3-c22";
++			reg = <2>;
++		};
++		lan3phy: ethernet-phy@3 {
++			compatible = "ethernet-phy-ieee802.3-c22";
++			reg = <3>;
++		};
++		wanphy: ethernet-phy@5 {
++			compatible = "ethernet-phy-ieee802.3-c22";
++			reg = <5>;
++		};
++	};
++};
++
++&fec2 {
++	pinctrl-names = "default";
++	pinctrl-0 = <&pinctrl_enet2>;
++	phy-mode = "rmii";
++	phy-handle = <&wanphy>;
++	status = "okay";
++};
++
++//general power controller (for cpu power management)
++&gpc {
++	fsl,cpu_pupscr_sw2iso = <0x1>;
++	fsl,cpu_pupscr_sw = <0x0>;
++	fsl,cpu_pdnscr_iso2sw = <0x1>;
++	fsl,cpu_pdnscr_iso = <0x1>;
++	fsl,ldo-bypass = <0>; /* DCDC, ldo-enable */
++};
++
++&iomuxc {
++	pinctrl-names = "default";
++	pinctrl-0 = <&pinctrl_hog_1>;
++	imx6ul-evk {
++		pinctrl_hog_1: hoggrp-1 {
++			fsl,pins = <
++				MX6UL_PAD_LCD_DATA08__GPIO3_IO13	0x0		//EXT_24V_GPIO_INPUT#
++				MX6UL_PAD_LCD_DATA09__GPIO3_IO14	0x8		//DUAL_SIM_SELECTION
++				MX6UL_PAD_SNVS_TAMPER0__GPIO5_IO00	0x0		//Factory_Default#
++				MX6UL_PAD_SNVS_TAMPER5__GPIO5_IO05	0x80000000	//ENET1_INT#
++			>;
++		};
++
++		pinctrl_leds: ledgrp {
++			fsl,pins = <
++				MX6UL_PAD_LCD_DATA00__GPIO3_IO05	0x8		//LED_Red_VPN
++				MX6UL_PAD_LCD_DATA01__GPIO3_IO06	0x8		//LED_Green_VPN
++				MX6UL_PAD_LCD_DATA05__GPIO3_IO10	0x8		//LED_Red_WWAN
++				MX6UL_PAD_LCD_DATA06__GPIO3_IO11	0x8		//LED_Gree_WWAN
++				MX6UL_PAD_LCD_DATA13__GPIO3_IO18	0x8		//LED_Red_LP_TEST
++				MX6UL_PAD_LCD_DATA14__GPIO3_IO19	0x8		//LED_Green_LP_TEST
++				MX6UL_PAD_LCD_DATA17__GPIO3_IO22	0x8		//LED_Red_PWR
++				MX6UL_PAD_LCD_DATA18__GPIO3_IO23	0x8		//LED_Green_PWR
++				MX6UL_PAD_LCD_DATA21__GPIO3_IO26	0x8		//LED_Red_STATUS
++				MX6UL_PAD_LCD_DATA22__GPIO3_IO27	0x8		//LED_Green_STATUS
++			>;
++		};
++
++		pinctrl_dvfs: dvfsgrp {
++			fsl,pins = <
++				MX6UL_PAD_SNVS_TAMPER3__GPIO5_IO03	0x79
++			>;
++		};
++
++		pinctrl_enet1: enet1grp {
++			fsl,pins = <
++				MX6UL_PAD_GPIO1_IO07__ENET1_MDC		0x1b0b0
++				MX6UL_PAD_GPIO1_IO06__ENET1_MDIO	0x1b0b0
++				MX6UL_PAD_ENET1_RX_EN__ENET1_RX_EN	0x1b0b0
++				MX6UL_PAD_ENET1_RX_ER__ENET1_RX_ER	0x1b0b0
++				MX6UL_PAD_ENET1_RX_DATA0__ENET1_RDATA00	0x1b0b0
++				MX6UL_PAD_ENET1_RX_DATA1__ENET1_RDATA01	0x1b0b0
++				MX6UL_PAD_ENET1_TX_EN__ENET1_TX_EN	0x1b0b0
++				MX6UL_PAD_ENET1_TX_DATA0__ENET1_TDATA00	0x1b0b0
++				MX6UL_PAD_ENET1_TX_DATA1__ENET1_TDATA01	0x1b0b0
++				MX6UL_PAD_ENET1_TX_CLK__ENET1_REF_CLK1	0x4001b031
++			>;
++		};
++
++                pinctrl_enet2: enet2grp {
++                        fsl,pins = <
++                                MX6UL_PAD_ENET2_RX_EN__ENET2_RX_EN      0x1b0b0
++                                MX6UL_PAD_ENET2_RX_ER__ENET2_RX_ER      0x1b0b0
++                                MX6UL_PAD_ENET2_RX_DATA0__ENET2_RDATA00 0x1b0b0
++                                MX6UL_PAD_ENET2_RX_DATA1__ENET2_RDATA01 0x1b0b0
++                                MX6UL_PAD_ENET2_TX_EN__ENET2_TX_EN      0x1b0b0
++                                MX6UL_PAD_ENET2_TX_DATA0__ENET2_TDATA00 0x1b0b0
++                                MX6UL_PAD_ENET2_TX_DATA1__ENET2_TDATA01 0x1b0b0
++                                MX6UL_PAD_ENET2_TX_CLK__ENET2_REF_CLK2  0x4001b031
++                        >;
++                };
++
++		pinctrl_uart1: uart1grp {
++			fsl,pins = <
++				MX6UL_PAD_UART1_TX_DATA__UART1_DCE_TX 0x1b0b1
++				MX6UL_PAD_UART1_RX_DATA__UART1_DCE_RX 0x1b0b1
++			>;
++		};
++
++		pinctrl_uart2: uart2grp {
++			fsl,pins = <
++				MX6UL_PAD_UART2_TX_DATA__UART2_DCE_TX 0x1b0b1
++				MX6UL_PAD_UART2_RX_DATA__UART2_DCE_RX 0x1b0b1
++				MX6UL_PAD_UART2_CTS_B__UART2_DCE_CTS 0x1b0b1
++			>;
++		};
++
++		pinctrl_uart3: uart3grp {
++			fsl,pins = <
++				MX6UL_PAD_UART3_TX_DATA__UART3_DCE_TX 0x1b0b1
++				MX6UL_PAD_UART3_RX_DATA__UART3_DCE_RX 0x1b0b1
++			>;
++		};
++
++		pinctrl_usdhc1: usdhc1grp {
++			fsl,pins = <
++				MX6UL_PAD_SD1_CMD__USDHC1_CMD     0x17059
++				MX6UL_PAD_SD1_CLK__USDHC1_CLK     0x10071
++				MX6UL_PAD_SD1_DATA0__USDHC1_DATA0 0x17059
++				MX6UL_PAD_SD1_DATA1__USDHC1_DATA1 0x17059
++				MX6UL_PAD_SD1_DATA2__USDHC1_DATA2 0x17059
++				MX6UL_PAD_SD1_DATA3__USDHC1_DATA3 0x17059
++			>;
++		};
++
++		pinctrl_usdhc1_100mhz: usdhc1grp100mhz {
++			fsl,pins = <
++				MX6UL_PAD_SD1_CMD__USDHC1_CMD     0x170b9
++				MX6UL_PAD_SD1_CLK__USDHC1_CLK     0x100b9
++				MX6UL_PAD_SD1_DATA0__USDHC1_DATA0 0x170b9
++				MX6UL_PAD_SD1_DATA1__USDHC1_DATA1 0x170b9
++				MX6UL_PAD_SD1_DATA2__USDHC1_DATA2 0x170b9
++				MX6UL_PAD_SD1_DATA3__USDHC1_DATA3 0x170b9
++			>;
++		};
++
++		pinctrl_usdhc1_200mhz: usdhc1grp200mhz {
++			fsl,pins = <
++				MX6UL_PAD_SD1_CMD__USDHC1_CMD     0x170f9
++				MX6UL_PAD_SD1_CLK__USDHC1_CLK     0x100f9
++				MX6UL_PAD_SD1_DATA0__USDHC1_DATA0 0x170f9
++				MX6UL_PAD_SD1_DATA1__USDHC1_DATA1 0x170f9
++				MX6UL_PAD_SD1_DATA2__USDHC1_DATA2 0x170f9
++				MX6UL_PAD_SD1_DATA3__USDHC1_DATA3 0x170f9
++			>;
++		};
++
++		pinctrl_usdhc2: usdhc2grp {
++			fsl,pins = <
++				MX6UL_PAD_NAND_RE_B__USDHC2_CLK     0x10069
++				MX6UL_PAD_NAND_WE_B__USDHC2_CMD     0x17059
++				MX6UL_PAD_NAND_DATA00__USDHC2_DATA0 0x17059
++				MX6UL_PAD_NAND_DATA01__USDHC2_DATA1 0x17059
++				MX6UL_PAD_NAND_DATA02__USDHC2_DATA2 0x17059
++				MX6UL_PAD_NAND_DATA03__USDHC2_DATA3 0x17059
++			>;
++		};
++
++		pinctrl_usdhc2_8bit: usdhc2grp_8bit {
++			fsl,pins = <
++				MX6UL_PAD_NAND_RE_B__USDHC2_CLK     0x10069
++				MX6UL_PAD_NAND_WE_B__USDHC2_CMD     0x17059
++				MX6UL_PAD_NAND_DATA00__USDHC2_DATA0 0x17059
++				MX6UL_PAD_NAND_DATA01__USDHC2_DATA1 0x17059
++				MX6UL_PAD_NAND_DATA02__USDHC2_DATA2 0x17059
++				MX6UL_PAD_NAND_DATA03__USDHC2_DATA3 0x17059
++				MX6UL_PAD_NAND_DATA04__USDHC2_DATA4 0x17059
++				MX6UL_PAD_NAND_DATA05__USDHC2_DATA5 0x17059
++				MX6UL_PAD_NAND_DATA06__USDHC2_DATA6 0x17059
++				MX6UL_PAD_NAND_DATA07__USDHC2_DATA7 0x17059
++			>;
++		};
++
++		pinctrl_usdhc2_8bit_100mhz: usdhc2grp_8bit_100mhz {
++			fsl,pins = <
++				MX6UL_PAD_NAND_RE_B__USDHC2_CLK     0x100b9
++				MX6UL_PAD_NAND_WE_B__USDHC2_CMD     0x170b9
++				MX6UL_PAD_NAND_DATA00__USDHC2_DATA0 0x170b9
++				MX6UL_PAD_NAND_DATA01__USDHC2_DATA1 0x170b9
++				MX6UL_PAD_NAND_DATA02__USDHC2_DATA2 0x170b9
++				MX6UL_PAD_NAND_DATA03__USDHC2_DATA3 0x170b9
++				MX6UL_PAD_NAND_DATA04__USDHC2_DATA4 0x170b9
++				MX6UL_PAD_NAND_DATA05__USDHC2_DATA5 0x170b9
++				MX6UL_PAD_NAND_DATA06__USDHC2_DATA6 0x170b9
++				MX6UL_PAD_NAND_DATA07__USDHC2_DATA7 0x170b9
++			>;
++		};
++
++		pinctrl_usdhc2_8bit_200mhz: usdhc2grp_8bit_200mhz {
++			fsl,pins = <
++				MX6UL_PAD_NAND_RE_B__USDHC2_CLK     0x100f9
++				MX6UL_PAD_NAND_WE_B__USDHC2_CMD     0x170f9
++				MX6UL_PAD_NAND_DATA00__USDHC2_DATA0 0x170f9
++				MX6UL_PAD_NAND_DATA01__USDHC2_DATA1 0x170f9
++				MX6UL_PAD_NAND_DATA02__USDHC2_DATA2 0x170f9
++				MX6UL_PAD_NAND_DATA03__USDHC2_DATA3 0x170f9
++				MX6UL_PAD_NAND_DATA04__USDHC2_DATA4 0x170f9
++				MX6UL_PAD_NAND_DATA05__USDHC2_DATA5 0x170f9
++				MX6UL_PAD_NAND_DATA06__USDHC2_DATA6 0x170f9
++				MX6UL_PAD_NAND_DATA07__USDHC2_DATA7 0x170f9
++			>;
++		};
++		pinctrl_wdog: wdoggrp {
++			fsl,pins = <
++				MX6UL_PAD_LCD_RESET__WDOG1_WDOG_ANY    0x30b0
++			>;
++		};
++                pinctrl_i2c1: i2c1grp {
++                        fsl,pins = <
++                                MX6UL_PAD_UART4_TX_DATA__I2C1_SCL 0x4001b8b0
++                                MX6UL_PAD_UART4_RX_DATA__I2C1_SDA 0x4001b8b0
++                        >;
++                };
++	        pinctrl_ecspi2: ecspi2grp {
++	                fsl,pins = <
++	                        MX6UL_PAD_CSI_DATA01__GPIO4_IO22          0x0b0b0 /* CSPI_SS */
++	                        MX6UL_PAD_CSI_DATA02__ECSPI2_MOSI	0x0b0b0 /* CSPI_MOSI */
++	                        MX6UL_PAD_CSI_DATA03__ECSPI2_MISO	0x0b0b0 /* CSPI_MISO */
++	                        MX6UL_PAD_CSI_DATA00__ECSPI2_SCLK         0x0b0b0 /* CSPI_SCLK */
++	                >;
++	        };
++	};
++};
++
++&uart1 {
++	pinctrl-names = "default";
++	pinctrl-0 = <&pinctrl_uart1>;
++	status = "okay";
++};
++
++&uart2 {
++	pinctrl-names = "default";
++	pinctrl-0 = <&pinctrl_uart2>;
++	status = "okay";
++	uart-has-rtscts;
++	rs485-rts-active-low;
++	/delete-property/ dmas;
++	/delete-property/ dma-names;
++};
++
++&uart3 {
++	pinctrl-names = "default";
++	pinctrl-0 = <&pinctrl_uart3>;
++	status = "okay";
++	/delete-property/ dmas;
++	/delete-property/ dma-names;
++};
++
++&usbotg1 {
++	dr_mode = "host";
++	srp-disable;
++	hnp-disable;
++	adp-disable;
++	status = "okay";
++};
++
++&usbotg2 {
++	dr_mode = "host";
++	status = "okay";
++};
++
++&usbphy1 {
++	tx-d-cal = <0x5>;
++};
++
++//SD card
++&usdhc1 {
++	pinctrl-names = "default", "state_100mhz", "state_200mhz";
++	pinctrl-0 = <&pinctrl_usdhc1>;
++	pinctrl-1 = <&pinctrl_usdhc1_100mhz>;
++	pinctrl-2 = <&pinctrl_usdhc1_200mhz>;
++	cd-gpios = <&gpio1 19 GPIO_ACTIVE_LOW>;
++	wp-gpios = <&gpio1 2 GPIO_ACTIVE_HIGH>;
++	keep-power-in-suspend;
++	enable-sdio-wakeup;
++	vmmc-supply = <&reg_sd1_vmmc>;
++	status = "disabled";
++};
++
++//emmc
++&usdhc2 {
++	/*HS200 should work but is NOT stable on the eval board, requires NVCC=1,8V, place R702 instead of R701!*/
++	/*pinctrl-names = "default", "state_100mhz", "state_200mhz"; */
++	pinctrl-names = "default", "state_100mhz";
++	pinctrl-0 = <&pinctrl_usdhc2>;
++	pinctrl-1 = <&pinctrl_usdhc2_8bit_100mhz>;
++/*	pinctrl-2 = <&pinctrl_usdhc2_8bit_200mhz>; */
++	bus-width = <8>;
++	non-removable;
++	status = "okay";
++};
++
++&ecspi2 {
++	status = "okay";
++	pinctrl-0 = <&pinctrl_ecspi2>;
++        cs-gpios = <
++                &gpio4 22 GPIO_ACTIVE_HIGH
++        >;
++
++        spidev0: spi@0 {
++                compatible = "lineartechnology,ltc2488";	/* indeed it's ksz8895 but we don't have a compatible for that device and we want to avoid kernel warning when using spidev (as others do) */
++                reg = <0>;
++                spi-max-frequency = <20000000>;
++        };
++};
++
++&wdog1 {
++	pinctrl-names = "default";
++	pinctrl-0 = <&pinctrl_wdog>;
++	fsl,wdog_b; //until now, it seems no driver is using this property
++	fsl,ext-reset-output; //introduced in kernel 4.7
++};
++
++&i2c1 {
++	clock-frequency = <100000>;
++	pinctrl-0 = <&pinctrl_i2c1>;
++	pinctrl-names = "default";
++	status = "okay";
++	
++	rtc@68 {
++		compatible = "dallas,ds1339";
++		reg = <0x68>;
++	};	
++};
+--- a/arch/arm/boot/dts/Makefile	1970-01-01 01:00:00.000000000 +0100
++++ a/arch/arm/boot/dts/Makefile	2022-03-12 18:13:58.969287696 +0100
+@@ -594,7 +594,8 @@
+ 	imx6ull-phytec-segin-ff-rdk-nand.dtb \
+ 	imx6ull-phytec-segin-ff-rdk-emmc.dtb \
+ 	imx6ull-phytec-segin-lc-rdk-nand.dtb \
+-	imx6ulz-14x14-evk.dtb
++	imx6ulz-14x14-evk.dtb \
++	irf1.dtb
+ dtb-$(CONFIG_SOC_IMX7D) += \
+ 	imx7d-cl-som-imx7.dtb \
+ 	imx7d-colibri-emmc-eval-v3.dtb \

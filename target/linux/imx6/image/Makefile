@@ -95,6 +95,12 @@ define Build/imx6-combined-image
 		1024
 endef
 
+define Build/adstec-image
+	$(CP) $(KDIR)/image-irf1.dtb $(BIN_DIR)
+	$(CP) $(KDIR)/zImage $(BIN_DIR)/$(IMG_PREFIX)-zImage
+	$(CP) $@ $(BIN_DIR)/$(IMG_PREFIX)-root.squashfs
+endef
+
 define Build/imx6-sdcard
 	$(Build/imx6-combined-image-prepare)
 
@@ -237,5 +243,17 @@ define Device/apalis
   ARTIFACT/recovery.scr := recovery-scr
 endef
 TARGET_DEVICES += apalis
+
+define Device/irf1000
+  DEVICE_VENDOR := ads-tec
+  DEVICE_MODEL := irf1000
+  KERNEL := kernel-bin | adstec-image
+  DEVICE_NAME := irf1000
+  DEVICE_PACKAGES := kmod-usb-mxs-phy kmod-usb-chipidea-imx
+  DEVICE_DTS := irf1
+  IMAGES :=
+  FILESYSTEMS := squashfs
+endef
+TARGET_DEVICES += irf1000
 
 $(eval $(call BuildImage))
