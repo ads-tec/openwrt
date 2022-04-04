@@ -98,7 +98,7 @@ endef
 define Build/adstec-image
 	$(CP) $(KDIR)/image-irf1.dtb $(BIN_DIR)
 	$(CP) $(KDIR)/zImage $(BIN_DIR)/$(IMG_PREFIX)-zImage
-	$(CP) $@ $(BIN_DIR)/$(IMG_PREFIX)-root.squashfs
+	$(CP) $(KDIR)/root.squashfs $(BIN_DIR)/$(IMG_PREFIX)-root.squashfs
 endef
 
 define Build/imx6-sdcard
